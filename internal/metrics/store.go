@@ -6,6 +6,7 @@ package metrics
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"sort"
 	"strconv"
@@ -35,6 +36,24 @@ func (tc ToolCall) MarshalJSON() ([]byte, error) {
 		Alias:    Alias(tc),
 		Duration: tc.Duration.Milliseconds(),
 	})
+}
+
+// UnmarshalJSON custom unmarshaler to convert milliseconds back to time.Duration
+// IMPORTANT: Without this, loading from persistence would fail because Go's
+// json.Unmarshal cannot automatically convert int64 to time.Duration
+func (tc *ToolCall) UnmarshalJSON(data []byte) error {
+	type Alias ToolCall
+	aux := &struct {
+		*Alias
+		Duration int64 `json:"duration_ms"`
+	}{
+		Alias: (*Alias)(tc),
+	}
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+	tc.Duration = time.Duration(aux.Duration) * time.Millisecond
+	return nil
 }
 
 // ServerStats tracks server-level statistics
@@ -315,10 +334,13 @@ func (s *Store) saveToFile() {
 
 	data, err := json.MarshalIndent(saved, "", "  ")
 	if err != nil {
+		log.Printf("Warning: failed to marshal metrics for persistence: %v", err)
 		return
 	}
 
-	_ = os.WriteFile(s.persistPath, data, 0644)
+	if err := os.WriteFile(s.persistPath, data, 0644); err != nil {
+		log.Printf("Warning: failed to persist metrics to %s: %v", s.persistPath, err)
+	}
 }
 
 // Helper functions

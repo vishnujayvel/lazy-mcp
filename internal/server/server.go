@@ -107,6 +107,8 @@ func StartStdioServer(cfg *config.Config) error {
 			persistPath = cfg.McpProxy.Options.MetricsFile
 		}
 		metricsStore = metrics.InitGlobalStore(retention, persistPath)
+		// Ensure metrics goroutine is stopped on shutdown
+		defer metricsStore.Stop()
 		log.Printf("Metrics store initialized (retention=%s, persist=%v)", retention, persistPath != "")
 	}
 

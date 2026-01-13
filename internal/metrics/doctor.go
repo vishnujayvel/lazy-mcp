@@ -138,7 +138,7 @@ func checkLatency(store *Store, _ []string) Check {
 			details = append(details, map[string]interface{}{
 				"server":    server,
 				"p99":       fmt.Sprintf("%.1fs", p99.Seconds()),
-				"threshold": fmt.Sprintf("%.0fs", LatencyWarningThreshold.Seconds()),
+				"threshold": fmt.Sprintf("%.0fs", LatencyCriticalThreshold.Seconds()), // Show critical threshold
 			})
 		} else if p99 >= LatencyWarningThreshold {
 			warnings = append(warnings, fmt.Sprintf("%s p99=%.1fs", server, p99.Seconds()))
