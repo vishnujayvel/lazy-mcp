@@ -520,6 +520,9 @@ type ServerRegistry struct {
 	serverConfigs map[string]*config.MCPClientConfigV2
 	metricsStore  *metrics.Store
 	mu            sync.RWMutex
+	// createClient optionally overrides client.NewMCPClient. Intended for tests
+	// that inject mock transports; nil means use the production constructor.
+	createClient func(name string, conf *config.MCPClientConfigV2) (*client.Client, error)
 }
 
 // NewServerRegistry creates a new server registry with server configurations
@@ -579,8 +582,14 @@ func (r *ServerRegistry) GetOrLoadServer(ctx context.Context, serverName string)
 		return nil, fmt.Errorf("server config not found: %s", serverName)
 	}
 
-	// Create the MCP client
-	mcpClient, err := client.NewMCPClient(serverName, cfg)
+	// Create the MCP client (tests may override via createClient)
+	var mcpClient *client.Client
+	var err error
+	if r.createClient != nil {
+		mcpClient, err = r.createClient(serverName, cfg)
+	} else {
+		mcpClient, err = client.NewMCPClient(serverName, cfg)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to create MCP client: %w", err)
 	}
